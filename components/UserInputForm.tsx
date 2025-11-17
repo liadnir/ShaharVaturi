@@ -24,7 +24,7 @@ const UserInputForm: React.FC<UserInputFormProps> = ({ onSubmit, initialData }) 
     distance: 20,
     prepHours: 1,
     workshopHours: 2,
-    estimatedWoodKg: 5,
+    estimatedWoodMeters: 5,
     hasAssistant: false,
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -42,9 +42,9 @@ const UserInputForm: React.FC<UserInputFormProps> = ({ onSubmit, initialData }) 
         newErrors.distance = "המרחק חייב להיות בין 0 ל-500 ק\"מ.";
     }
 
-    // Estimated Wood Kg
-    if (formData.estimatedWoodKg < 0 || formData.estimatedWoodKg > 200) {
-        newErrors.estimatedWoodKg = "כמות העץ חייבת להיות בין 0 ל-200 ק\"ג.";
+    // Estimated Wood Meters
+    if (formData.estimatedWoodMeters < 0 || formData.estimatedWoodMeters > 200) {
+        newErrors.estimatedWoodMeters = "אורך העץ חייב להיות בין 0 ל-200 מטר.";
     }
     
     // Prep Hours
@@ -135,20 +135,20 @@ const UserInputForm: React.FC<UserInputFormProps> = ({ onSubmit, initialData }) 
           {errors.distance && <p className="text-red-600 text-xs mt-1">{errors.distance}</p>}
         </div>
          <div>
-          <label htmlFor="estimatedWoodKg" className="block text-sm font-medium text-slate-700">4. ק"ג עץ מוערך</label>
+          <label htmlFor="estimatedWoodMeters" className="block text-sm font-medium text-slate-700">4. אורך עץ (במטרים)</label>
           <input
             type="number"
-            id="estimatedWoodKg"
-            name="estimatedWoodKg"
-            value={formData.estimatedWoodKg}
+            id="estimatedWoodMeters"
+            name="estimatedWoodMeters"
+            value={formData.estimatedWoodMeters}
             onChange={handleChange}
             min="0"
             max="200"
             step="1"
-            className={getInputClasses('estimatedWoodKg')}
+            className={getInputClasses('estimatedWoodMeters')}
             required
           />
-          {errors.estimatedWoodKg && <p className="text-red-600 text-xs mt-1">{errors.estimatedWoodKg}</p>}
+          {errors.estimatedWoodMeters && <p className="text-red-600 text-xs mt-1">{errors.estimatedWoodMeters}</p>}
         </div>
       </div>
       

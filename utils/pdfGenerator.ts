@@ -1,145 +1,109 @@
-import { logoBase64 } from '../data/logo';
-import { arimoRegular } from '../components/fonts/Arimo-Regular-normal.js';
-import { QuoteInput, CalculationResult, ClientDetails } from '../types';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { ClientDetails, QuoteInput, CalculationResult } from '../types';
+import { VAT_RATE } from '../constants';
 
-declare const jspdf: any;
+// Function to reverse Hebrew text for jsPDF, which has limited native RTL support.
+const reverseHebrew = (text: string) => {
+    if (typeof text !== 'string') return '';
+    return text.split('').reverse().join('');
+};
 
-export const exportQuoteToPdf = async (
-  clientDetails: ClientDetails,
-  input: QuoteInput, 
-  result: CalculationResult, 
-  fileName: string
+export const generateQuotePDF = (
+    clientDetails: ClientDetails,
+    input: QuoteInput,
+    result: CalculationResult
 ) => {
+    const doc = new jsPDF();
+    const pageHeight = doc.internal.pageSize.height;
+
+    // NOTE: Custom font has been removed due to a syntax error in the font file.
+    // PDF will use a default font, and Hebrew text may not render correctly.
+
+    // === HEADER ===
+    doc.setFontSize(26);
+    doc.text(reverseHebrew('נגר על הבוקר'), 200, 20, { align: 'right' });
+    doc.setFontSize(11);
+    doc.text(reverseHebrew('סדנאות נגרות ויצירה בעץ'), 200, 28, { align: 'right' });
+    doc.text('info@carpentamorning.com', 200, 34, { align: 'right' });
+
+    doc.setLineWidth(0.5);
+    doc.line(14, 45, 200, 45);
+
+    // === QUOTE DETAILS ===
+    doc.setFontSize(22);
+    doc.text(reverseHebrew('הצעת מחיר'), 200, 60, { align: 'right' });
+
+    doc.setFontSize(12);
+    doc.text(reverseHebrew(`תאריך: ${new Date().toLocaleDateString('he-IL')}`), 200, 68, { align: 'right' });
+    doc.text(reverseHebrew(`הצעה מספר: ${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`), 200, 74, { align: 'right' });
+
+    doc.setFontSize(12);
+    doc.text(reverseHebrew(`לכבוד: ${clientDetails.businessName}`), 14, 68);
+    if(clientDetails.address) {
+        doc.text(reverseHebrew(`כתובת: ${clientDetails.address}`), 14, 74);
+    }
+    if(clientDetails.email) {
+        doc.text(`Email: ${clientDetails.email}`, 14, 80);
+    }
+
+    // === TABLE ===
+    const tableColumn = [reverseHebrew("מחיר"), reverseHebrew("כמות"), reverseHebrew("תיאור")];
+    const tableRows = [];
+
+    const item = [
+        result.finalPrice.toFixed(2),
+        1,
+        `${reverseHebrew(input.workshopName)}\n${reverseHebrew(`ל-${input.participants} משתתפים, ${input.workshopHours} שעות`)}`
+    ];
+    tableRows.push(item);
     
-  const { jsPDF } = jspdf;
-  const pdf = new jsPDF({
-    orientation: 'p',
-    unit: 'mm',
-    format: 'a4',
-  });
+    autoTable(doc, {
+        startY: 90,
+        head: [tableColumn],
+        body: tableRows,
+        theme: 'grid',
+        styles: {
+            halign: 'right',
+            cellPadding: 3,
+            fontSize: 12
+        },
+        headStyles: {
+            fillColor: [34, 119, 142], // A custom color
+            textColor: 255,
+            fontStyle: 'bold',
+        },
+        columnStyles: {
+            0: { halign: 'center' }, // Price
+            1: { halign: 'center' }, // Quantity
+        }
+    });
 
-  pdf.addFileToVFS('Arimo-Regular.ttf', arimoRegular);
-  pdf.addFont('Arimo-Regular.ttf', 'Arimo', 'normal');
-  pdf.setFont('Arimo');
-  
-  const pdfWidth = pdf.internal.pageSize.getWidth();
-  const margin = 20;
-  
-  // Helper function to draw right-aligned text and update Y position
-  const drawRightAlignedText = (text: string, y: number, fontSize: number, isBold: boolean = false) => {
-    pdf.setFontSize(fontSize);
-    pdf.setFont('Arimo', isBold ? 'bold' : 'normal');
+    // === TOTALS ===
+    const finalY = (doc as any).lastAutoTable.finalY;
+    const totalsX = 200;
     
-    const lines = pdf.splitTextToSize(text, pdfWidth - margin * 2);
-    pdf.text(lines, pdfWidth - margin, y, { align: 'right', lang: 'he' });
-    
-    // Using getLineHeight is more accurate than manual calculation
-    const lineHeight = pdf.getLineHeight() / pdf.internal.scaleFactor;
-    return y + (lines.length * lineHeight);
-  };
+    doc.setFontSize(12);
+    doc.text(reverseHebrew('סה"כ לפני מע"מ:'), totalsX, finalY + 10, { align: 'right' });
+    doc.text(`${result.finalPrice.toFixed(2)} ILS`, totalsX - 40, finalY + 10, { align: 'right' });
 
-  let yPosition = 20;
+    doc.text(reverseHebrew(`מע"מ (${VAT_RATE * 100}%):`), totalsX, finalY + 17, { align: 'right' });
+    doc.text(`${(result.finalPrice * VAT_RATE).toFixed(2)} ILS`, totalsX - 40, finalY + 17, { align: 'right' });
 
-  // --- Header ---
-  const logoWidth = 35;
-  const logoHeight = 35;
-  // The split is necessary if the string includes the data URI prefix.
-  const base64Data = logoBase64.includes(',') ? logoBase64.split(',')[1] : logoBase64;
-  pdf.addImage(base64Data, 'PNG', margin, yPosition, logoWidth, logoHeight);
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text(reverseHebrew('סה"כ לתשלום:'), totalsX, finalY + 26, { align: 'right' });
+    doc.text(`${result.finalPriceWithVAT.toFixed(2)} ILS`, totalsX - 40, finalY + 26, { align: 'right' });
+    doc.setFont(undefined, 'normal');
 
-  pdf.setFontSize(10);
-  pdf.text('שחר - עץ השחר', pdfWidth - margin, yPosition + 5, { align: 'right' });
-  pdf.text('סדנאות נגרות ניידות', pdfWidth - margin, yPosition + 10, { align: 'right' });
-  pdf.text('shahar@email.com | 054-1234567', pdfWidth - margin, yPosition + 15, { align: 'right' });
+    // === FOOTER ===
+    const footerY = pageHeight - 30;
+    doc.setLineWidth(0.5);
+    doc.line(14, footerY, 200, footerY);
+    doc.setFontSize(10);
+    doc.text(reverseHebrew('תודה רבה!'), 105, footerY + 8, { align: 'center' });
+    doc.text(reverseHebrew('תוקף ההצעה הינו 30 יום | התשלום יבוצע בהעברה בנקאית או צ\'ק'), 105, footerY + 14, { align: 'center' });
 
-  yPosition += logoHeight + 20;
-  
-  // --- Title and Client Details ---
-  pdf.setFontSize(22);
-  pdf.setFont('Arimo', 'bold');
-  pdf.text('הצעת מחיר', pdfWidth / 2, yPosition, { align: 'center', lang: 'he' });
-  yPosition += 15;
-  
-  pdf.setFontSize(11);
-  pdf.setFont('Arimo', 'normal');
-  const today = new Date().toLocaleDateString('he-IL');
-  pdf.text(`תאריך: ${today}`, pdfWidth - margin, yPosition, { align: 'right' });
-  
-  // Client Details
-  pdf.setFont('Arimo', 'bold');
-  pdf.text('לכבוד:', margin, yPosition - 5, { align: 'left' });
-  pdf.setFont('Arimo', 'normal');
-  pdf.text(clientDetails.businessName, margin, yPosition, { align: 'left' });
-  if (clientDetails.address) {
-     pdf.text(clientDetails.address, margin, yPosition + 5, { align: 'left' });
-  }
-  if (clientDetails.phone) {
-    pdf.text(clientDetails.phone, margin, yPosition + 10, { align: 'left' });
-  }
-   if (clientDetails.email) {
-    pdf.text(clientDetails.email, margin, yPosition + 15, { align: 'left' });
-  }
-
-  yPosition += 25;
-
-  pdf.setLineWidth(0.5);
-  pdf.line(margin, yPosition, pdfWidth - margin, yPosition);
-  yPosition += 10;
-
-  // --- Quote Body ---
-  yPosition = drawRightAlignedText(`נושא: הצעת מחיר עבור סדנת "${input.workshopName}"`, yPosition, 12, true);
-  yPosition += 5;
-  yPosition = drawRightAlignedText(`בהמשך לשיחתנו, אני שמח להגיש הצעת מחיר עבור סדנת הנגרות המיועדת ל-${input.participants} משתתפים.`, yPosition, 11);
-  yPosition += 8;
-  yPosition = drawRightAlignedText('הסדנה כוללת:', yPosition, 11, true);
-  yPosition += 2;
-  
-  const bulletPoints = [
-    `הגעה מלאה עד אליכם עם כל הציוד הנדרש.`,
-    `חומרי גלם איכותיים (עץ וכו') עבור כל המשתתפים.`,
-    `הנחיה מקצועית וליווי אישי לאורך הפעילות (כ-${input.workshopHours} שעות).`,
-    `בסיום, כל משתתף יוצא עם התוצר שהכין בעצמו.`
-  ];
-  
-  const lineHeight = pdf.getLineHeight() / pdf.internal.scaleFactor;
-  bulletPoints.forEach(point => {
-      yPosition = drawRightAlignedText(`•  ${point}`, yPosition, 11);
-      yPosition += 2; // Extra space between bullet points
-  });
-  yPosition += 10;
-
-  // --- Pricing Table ---
-  const formatCurrency = (val: number) => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
-  const priceLabelX = pdfWidth - margin; // Labels aligned to the far right
-  const priceValueX = pdfWidth / 2;     // Values aligned to the right, in the middle of the page
-
-  pdf.setFontSize(12);
-  pdf.setFont('Arimo', 'normal');
-
-  pdf.text('מחיר לפני מע"מ:', priceLabelX, yPosition, { align: 'right'});
-  pdf.text(formatCurrency(result.finalPrice), priceValueX, yPosition, { align: 'right'});
-  yPosition += 8;
-
-  pdf.text('מע"מ (17%):', priceLabelX, yPosition, { align: 'right'});
-  pdf.text(formatCurrency(result.finalPriceWithVAT - result.finalPrice), priceValueX, yPosition, { align: 'right'});
-  yPosition += 4;
-  
-  pdf.setLineWidth(0.2);
-  pdf.line(margin, yPosition, pdfWidth - margin, yPosition);
-  yPosition += 8;
-  
-  pdf.setFontSize(14);
-  pdf.setFont('Arimo', 'bold');
-  pdf.text('סה"כ לתשלום:', priceLabelX, yPosition, { align: 'right'});
-  pdf.text(formatCurrency(result.finalPriceWithVAT), priceValueX, yPosition, { align: 'right'});
-  yPosition += 25;
-  
-  // --- Footer ---
-  pdf.setFont('Arimo', 'normal');
-  pdf.setFontSize(11);
-  const footerText = "אני זמין לכל שאלה,\nשחר.";
-  const footerLines = pdf.splitTextToSize(footerText, pdfWidth - margin * 2);
-  pdf.text(footerLines, pdfWidth / 2, yPosition, { align: 'center' });
-
-  pdf.save(`${fileName}.pdf`);
+    // === SAVE DOCUMENT ===
+    doc.save(`Quote-${clientDetails.businessName.replace(/ /g,"_")}.pdf`);
 };

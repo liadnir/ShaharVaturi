@@ -22,9 +22,14 @@ const ClientDetailsForm: React.FC<ClientDetailsFormProps> = ({ onSubmit, initial
         newErrors.businessName = "שם העסק הוא שדה חובה.";
     }
 
+    // A more robust regex for email validation, covering more edge cases.
+    const emailRegex = new RegExp(
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    );
+
     if (!formData.email.trim()) {
         newErrors.email = "כתובת המייל היא שדה חובה.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!emailRegex.test(formData.email.toLowerCase())) {
         newErrors.email = "כתובת המייל אינה תקינה.";
     }
 
@@ -84,6 +89,9 @@ const ClientDetailsForm: React.FC<ClientDetailsFormProps> = ({ onSubmit, initial
             onChange={handleChange}
             className={getInputClasses('email')}
             required
+            autoCapitalize="none"
+            autoCorrect="off"
+            dir="ltr"
           />
           {errors.email && <p className="text-red-600 text-xs mt-1">{errors.email}</p>}
         </div>

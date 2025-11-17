@@ -1,6 +1,6 @@
 import React from 'react';
 import { QuoteInput, CalculationResult } from '../types';
-import { WOOD_PRICE_PER_KG, ASSISTANT_RATE_PER_WORKSHOP_HOUR } from '../constants';
+import { WOOD_PRICE_PER_METER, ASSISTANT_RATE_PER_WORKSHOP_HOUR } from '../constants';
 
 interface InternalBreakdownProps {
   input: QuoteInput;
@@ -28,7 +28,7 @@ const InternalBreakdown: React.FC<InternalBreakdownProps> = ({ input, result }) 
           <span className="font-semibold">{formatCurrency(result.travelCost)}</span>
         </li>
         <li className="flex justify-between">
-          <span>עלות עץ ({input.estimatedWoodKg} ק"ג * {formatCurrency(WOOD_PRICE_PER_KG)}):</span>
+          <span>עלות עץ ({input.estimatedWoodMeters} מטר * {formatCurrency(WOOD_PRICE_PER_METER)}):</span>
           <span className="font-semibold">{formatCurrency(result.materialsCost)}</span>
         </li>
         {result.assistantCost > 0 && (

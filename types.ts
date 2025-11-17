@@ -26,7 +26,7 @@ export interface QuoteInput {
   distance: number;
   prepHours: number;
   workshopHours: number;
-  estimatedWoodKg: number;
+  estimatedWoodMeters: number;
   hasAssistant: boolean;
 }
 
